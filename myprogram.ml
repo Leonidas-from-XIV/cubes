@@ -2,17 +2,6 @@ type cube = Cube of int
 
 exception Too_big
 
-(* When we extract a cube out of a cuboid, it splits into 0-3 parts *)
-type 'a subdivisions =
-  (* When the cube matches 3 dimensions of the cuboid, it matches it completely, no rest *)
-  | Zero
-  (* When the cube matches 2 dimensions of the cuboid *)
-  | One of ('a * 'a * 'a)
-  (* When the cube matches 1 dimension *)
-  | Two of ('a * 'a * 'a) * ('a * 'a * 'a)
-  (* When the cube is smaller than all of the cuboid dimensions *)
-  | Three of ('a * 'a * 'a) * ('a * 'a * 'a) * ('a * 'a * 'a)
-
 let extract1 (x, y, z) (Cube n) =
   if n > x || n > y || n > z then
     (* Trying to pull out a Cube of size n of something that is of less than n? *)
@@ -20,14 +9,14 @@ let extract1 (x, y, z) (Cube n) =
   else
     (* Calculate the count and sizes of the respective split cuboids *)
     match (n = x, n = y, n = z) with
-    | true, true, true -> Zero
-    | true, true, false -> One (x, y, z-n)
-    | true, false, true -> One (x, y-n, z)
-    | false, true, true -> One (x-n, y, z)
-    | false, false, true -> Two ((x-n, y, z), (n, y-n, z))
-    | false, true, false -> Two ((n, y, z-n), (x-n, y, z))
-    | true, false, false -> Two ((x, n, z-n), (x, y-n, z))
-    | false, false, false -> Three ((n, n, z-n), (x-n, n, z), (x, y-n, z))
+    | true, true, true -> None
+    | true, true, false -> Some [(x, y, z-n)]
+    | true, false, true -> Some [(x, y-n, z)]
+    | false, true, true -> Some [(x-n, y, z)]
+    | false, false, true -> Some [(x-n, y, z); (n, y-n, z)]
+    | false, true, false -> Some [(n, y, z-n); (x-n, y, z)]
+    | true, false, false -> Some [(x, n, z-n); (x, y-n, z)]
+    | false, false, false -> Some [(n, n, z-n); (x-n, n, z); (x, y-n, z)]
 
 exception Impossibru
 
@@ -40,20 +29,15 @@ let rec extract geom = function
         (* That cube was too big, try again with the next *)
         let (matches, cubes) = extract geom cubes in
         (matches, cube::cubes)
-    | Zero -> (1, cubes)
+    | None -> (1, cubes)
     (* Then we just recurse on the different ways the cuboids could be split *)
-    | One geom ->
-        let (matches, cubes) = extract geom cubes in
+    | Some geoms ->
+        let (matches, cubes) =
+          List.fold_left (fun (matches, cubes) geom ->
+            let (matches', cubes') = extract geom cubes in
+            (matches + matches', cubes')) (0, cubes) geoms
+        in
         (matches + 1, cubes)
-    | Two (geom1, geom2) ->
-        let (matches1, cubes) = extract geom1 cubes in
-        let (matches2, cubes) = extract geom2 cubes in
-        (matches1 + matches2 + 1, cubes)
-    | Three (geom1, geom2, geom3) ->
-        let (matches1, cubes) = extract geom1 cubes in
-        let (matches2, cubes) = extract geom2 cubes in
-        let (matches3, cubes) = extract geom3 cubes in
-        (matches1 + matches2 + matches3 + 1, cubes)
 
 let solve ((x, y, z), cubes) =
   match extract (x, y, z) cubes with
