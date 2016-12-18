@@ -1,2 +1,2 @@
 all:
-	ocamlbuild -use-ocamlfind myprogram.native
+	ocamlbuild -use-ocamlfind -pkg str myprogram.native
