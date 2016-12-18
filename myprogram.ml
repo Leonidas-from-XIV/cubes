@@ -12,7 +12,7 @@ let parse line =
     |> Str.split (Str.regexp " ")
     |> List.map int_of_string
     |> List.mapi (fun i n ->
-        let item = Cube (int_of_float ((float_of_int i) ** 2.0)) in
+        let item = Cube (int_of_float (2.0 ** (float_of_int i))) in
         let rec loop acc = function
           | 0 -> acc
           | n -> loop (item::acc) (n-1)
@@ -24,22 +24,51 @@ let parse line =
 
 exception Too_big
 
-let cut (x, y, z) (Cube n) =
+type 'a subdivisions =
+  | Zero
+  | One of ('a * 'a * 'a)
+  | Two of ('a * 'a * 'a) * ('a * 'a * 'a)
+  | Three of ('a * 'a * 'a) * ('a * 'a * 'a) * ('a * 'a * 'a)
+
+let extract (x, y, z) (Cube n) =
   if n > x || n > y || n > z then
     raise Too_big
   else
     match (n = x, n = y, n = z) with
-    | true, true, true -> []
-    | true, true, false -> [(x, y, z - n)]
-    | true, false, true -> [(x, y-n, z)]
-    | false, true, true -> [(x-n, y, z)]
-    | false, false, true -> [(x-n, y, z); (n, y-n, z)]
-    | false, true, false -> [(n, y, z-n); (x-n, y, z)]
-    | true, false, false -> [(x, n, z-n); (x, y-n, z)]
-    | false, false, false -> [(n, n, z-n); (x-n, n, z); (x, y-n, z)]
+    | true, true, true -> Zero
+    | true, true, false -> One (x, y, z - n)
+    | true, false, true -> One (x, y-n, z)
+    | false, true, true -> One (x-n, y, z)
+    | false, false, true -> Two ((x-n, y, z), (n, y-n, z))
+    | false, true, false -> Two ((n, y, z-n), (x-n, y, z))
+    | true, false, false -> Two ((x, n, z-n), (x, y-n, z))
+    | false, false, false -> Three ((n, n, z-n), (x-n, n, z), (x, y-n, z))
+
+exception Impossibru
+
+let rec helper geom cubes =
+  match cubes with
+  | [] -> raise Impossibru
+  | cube::cubes -> match extract geom cube with
+    | exception Too_big -> helper geom cubes
+    | Zero -> (1, cubes)
+    | One geom ->
+        let (matches, cubes) = helper geom cubes in
+        (matches + 1, cubes)
+    | Two (geom1, geom2) ->
+        let (matches1, cubes) = helper geom1 cubes in
+        let (matches2, cubes) = helper geom2 cubes in
+        (matches1 + matches2 + 1, cubes)
+    | Three (geom1, geom2, geom3) ->
+        let (matches1, cubes) = helper geom1 cubes in
+        let (matches2, cubes) = helper geom2 cubes in
+        let (matches3, cubes) = helper geom3 cubes in
+        (matches1 + matches2 + matches3 + 1, cubes)
 
 let solve ((x, y, z), cubes) =
-  (-1)
+  match helper (x, y, z) cubes with
+  | (i, _) -> i
+  | exception Impossibru -> -1
 
 let process line =
   line
