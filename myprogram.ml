@@ -36,7 +36,7 @@ let extract (x, y, z) (Cube n) =
   else
     match (n = x, n = y, n = z) with
     | true, true, true -> Zero
-    | true, true, false -> One (x, y, z - n)
+    | true, true, false -> One (x, y, z-n)
     | true, false, true -> One (x, y-n, z)
     | false, true, true -> One (x-n, y, z)
     | false, false, true -> Two ((x-n, y, z), (n, y-n, z))
@@ -49,21 +49,23 @@ exception Impossibru
 let rec helper geom cubes =
   match cubes with
   | [] -> raise Impossibru
-  | cube::cubes -> match extract geom cube with
-    | exception Too_big -> helper geom cubes
-    | Zero -> (1, cubes)
+  | cube::rest -> match extract geom cube with
+    | exception Too_big ->
+        let (matches, rest') = helper geom rest in
+        (matches, cube::rest')
+    | Zero -> (1, rest)
     | One geom ->
-        let (matches, cubes) = helper geom cubes in
-        (matches + 1, cubes)
+        let (matches, rest') = helper geom rest in
+        (matches + 1, rest')
     | Two (geom1, geom2) ->
-        let (matches1, cubes) = helper geom1 cubes in
-        let (matches2, cubes) = helper geom2 cubes in
-        (matches1 + matches2 + 1, cubes)
+        let (matches1, rest') = helper geom1 rest in
+        let (matches2, rest'') = helper geom2 rest' in
+        (matches1 + matches2 + 1, rest'')
     | Three (geom1, geom2, geom3) ->
-        let (matches1, cubes) = helper geom1 cubes in
-        let (matches2, cubes) = helper geom2 cubes in
-        let (matches3, cubes) = helper geom3 cubes in
-        (matches1 + matches2 + matches3 + 1, cubes)
+        let (matches1, rest') = helper geom1 rest in
+        let (matches2, rest'') = helper geom2 rest' in
+        let (matches3, rest''') = helper geom3 rest'' in
+        (matches1 + matches2 + matches3 + 1, rest''')
 
 let solve ((x, y, z), cubes) =
   match helper (x, y, z) cubes with
