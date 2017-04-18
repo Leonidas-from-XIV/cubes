@@ -75,13 +75,10 @@ let process line =
   |> string_of_int
   |> print_endline
 
-let main () =
-  let rec loop () =
-    match read_line () with
-    | line -> process line; loop ()
-    | exception End_of_file -> ()
-  in
-  loop ()
+let rec main () =
+  match read_line () with
+  | line -> process line; main ()
+  | exception End_of_file -> ()
 
 let () =
   main ()
