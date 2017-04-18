@@ -44,36 +44,39 @@ let solve ((x, y, z), cubes) =
   | (i, _) -> i
   | exception Impossibru -> -1
 
+let tup4 re = Tyre.conv
+  (fun (((x, y), z), w) -> ((x, y, z), w))
+  (fun ((x, y, z), w) -> ((x, y), z), w)
+  re
+
 let parse line =
-  (* no \d? okay.jpg *)
-  let r = Str.regexp "\\([0-9]+\\) \\([0-9]+\\) \\([0-9]+\\)\\(.*\\)" in
-  (* wtf what a horrible API *)
-  let _ = Str.string_match r line 0 in
-  let x = int_of_string @@ Str.matched_group 1 line in
-  let y = int_of_string @@ Str.matched_group 2 line in
-  let z = int_of_string @@ Str.matched_group 3 line in
-  (* Convert all these numbers into n times Cube (position ** 2) *)
-  let cubes =
-    Str.matched_group 4 line
-    |> Str.split (Str.regexp " ")
-    |> List.map int_of_string
+  let r =
+    Tyre.(pos_int <&> (str " " *> pos_int) <&> (str " " *> pos_int) <&> (list (str " " *> pos_int)))
+    |> tup4
+    |> Tyre.compile
+  in
+  let open CCResult.Infix in
+  Tyre.exec r line >|= fun (coords, cubes_per_power) ->
+    let cubes = cubes_per_power
     |> List.mapi (fun i n ->
-        let item = Cube (int_of_float (2.0 ** (float_of_int i))) in
         let rec loop acc = function
           | 0 -> acc
-          | n -> loop (item::acc) (n-1)
+          | n -> loop (Cube (1 lsl i)::acc) (n-1)
         in loop [] n)
     |> List.flatten
     |> List.rev
-  in
-  ((x, y, z), cubes)
+    in
+    (coords, cubes)
 
 let process line =
-  line
+  let open CCResult.Infix in
+  let r = line
   |> parse
-  |> solve
-  |> string_of_int
-  |> print_endline
+  >|= solve
+  >|= string_of_int
+  in match r with
+  | Ok v -> print_endline v
+  | Error _ -> print_endline "-1"
 
 let rec main () =
   match read_line () with
