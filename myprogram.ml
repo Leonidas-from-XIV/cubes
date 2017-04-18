@@ -49,14 +49,16 @@ let tup4 re = Tyre.conv
   (fun ((x, y, z), w) -> ((x, y), z), w)
   re
 
+let extract_values =
+  let open Tyre in
+  pos_int <&> (str " " *> pos_int) <&> (str " " *> pos_int) <&> (list @@ str " " *> pos_int)
+  |> tup4
+  |> compile
+  |> exec
+
 let parse line =
-  let r =
-    Tyre.(pos_int <&> (str " " *> pos_int) <&> (str " " *> pos_int) <&> (list (str " " *> pos_int)))
-    |> tup4
-    |> Tyre.compile
-  in
   let open CCResult.Infix in
-  Tyre.exec r line >|= fun (coords, cubes_per_power) ->
+  extract_values line >|= fun (coords, cubes_per_power) ->
     let cubes = cubes_per_power
     |> List.mapi (fun i n ->
         let rec loop acc = function
